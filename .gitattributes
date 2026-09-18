@@ -1,0 +1,11 @@
+# Normalise line endings in the repository so that a diff shows real changes.
+#
+# Without this the analysis machine commits CRLF, a reader on another platform
+# sees every line of every file as modified, and the release diff that is meant
+# to make the work checkable becomes unreadable instead.
+* text=auto eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.csv text eol=lf

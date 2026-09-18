@@ -1,0 +1,63 @@
+# The restricted corpus and everything derived from it.
+#
+# The custody undertaking is that records stay on the analysis machine. Only the
+# column map, the digest register and the run manifest are releasable, and those
+# are written to provenance/ which is tracked deliberately.
+outputs/
+data/
+raw/
+raw_data/
+original_data/
+results/
+figures/
+artefacts/
+artifacts/
+logs/
+
+# Source tables, in any location. The audit reads spreadsheets and a JSON export
+# that hold a whole class's session; none of it may be committed.
+*.xlsx
+*.xls
+*.parquet
+*.pkl
+*.sqlite
+*.h5
+*.npy
+
+# Rendered output. A figure or a table is a finding, and findings travel with
+# the paper rather than with the code.
+*.png
+*.eps
+*.pdf
+*.docx
+*.pptx
+*.svg
+
+# Comma-separated data is excluded by default, with one carve-out below for the
+# synthetic corpus that makes this repository runnable by a stranger.
+*.csv
+!synthetic/*.csv
+
+# The archive export, which is the largest single disclosure risk here.
+*.json
+!provenance/*.json
+!.vscode/*.json
+
+# Credentials. None should ever exist in this tree, and the pattern is here so
+# that an accident is caught by the ignore rules rather than by a reader.
+.env
+*.token
+*_token*
+secrets*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
