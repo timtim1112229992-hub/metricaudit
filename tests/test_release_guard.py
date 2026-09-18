@@ -177,6 +177,80 @@ def test_no_tracked_file_carries_participant_text():
         assert not found, f"{name} carries written text: {found[:3]}"
 
 
+def _messages() -> list[str] | None:
+    """Every commit message in the repository, subject and body."""
+    # A textual separator rather than a null byte, which this platform refuses
+    # to carry through an argument list.
+    mark = "-----end-of-commit-message-----"
+    try:
+        out = subprocess.run(["git", "log", f"--format=%s%n%b%n{mark}"], cwd=ROOT,
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return [m.strip() for m in out.stdout.split(mark) if m.strip()]
+
+
+def test_no_commit_credits_a_tool_as_an_author():
+    """A commit trailer is the one place an automated editor signs its work.
+
+    Version control writes the trailer without being asked, it renders on the
+    forge as co-authorship, and it survives every later check that looks only at
+    the working tree. Tooling does not become a contributor by having been
+    present, so the history is inspected rather than trusted.
+    """
+    messages = _messages()
+    if messages is None:
+        pytest.skip("not a git working tree")
+    offenders = [m.splitlines()[0] for m in messages
+                 if re.search(r"^\s*co-authored-by\s*:", m, re.I | re.M)]
+    assert not offenders, f"commits credit a co-author: {offenders}"
+
+
+def test_every_commit_carries_the_account_of_record():
+    """One identity across the history, and it discloses nobody.
+
+    A single commit made under a personal name or an institutional address
+    undoes anonymised review for the whole archive, and it is the sort of thing
+    that happens when a machine's global configuration is picked up silently.
+    """
+    try:
+        out = subprocess.run(["git", "log", "--format=%an <%ae>|%cn <%ce>"],
+                             cwd=ROOT, capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pytest.skip("not a git working tree")
+    identities = {part for line in out.stdout.splitlines() if line.strip()
+                  for part in line.split("|")}
+    assert len(identities) == 1, f"the history carries several identities: {identities}"
+    only = identities.pop()
+    assert "@users.noreply." not in only, (
+        "the forge substituted a private address for the account of record, so "
+        f"the history does not match the declared one: {only}")
+
+
+def test_no_commit_message_carries_a_measurement():
+    """A message is repository content, and findings do not belong in it.
+
+    Every other guard here reads the working tree, which is exactly what a
+    commit message is not. A quantity from the restricted session recorded in a
+    message is published the moment the branch is pushed and cannot be recalled,
+    so messages are held to describing the change and not its result.
+    """
+    messages = _messages()
+    if messages is None:
+        pytest.skip("not a git working tree")
+    # Three digits is past any version number or exit code a message needs, and
+    # a decimal fraction in a message is almost always an estimate.
+    measurement = re.compile(r"(?<![\w.])\d{3,}(?![\w.])|\d+\.\d+")
+    offenders = []
+    for message in messages:
+        hit = measurement.search(message)
+        if hit:
+            offenders.append(f"{message.splitlines()[0]!r} -> {hit.group(0)!r}")
+    assert not offenders, f"commit messages carry measurements: {offenders}"
+
+
 def test_released_text_names_no_author_and_no_working_label():
     """R13, R20 and R26, checked rather than remembered.
 
