@@ -1,11 +1,14 @@
 {
  "code": {
   "branch": "master",
-  "commit": "5e30c39574910a48c793c8c6d0971176aea4fff2",
+  "commit": "bf74db3dbe5bbcac38187a23514b2ded8e621955",
   "dirty": true,
   "rule_ordering": {
-   "checked": false,
-   "reason": "commit history unavailable"
+   "applier_first_committed": "bf74db3dbe5bbcac38187a23514b2ded8e621955",
+   "checked": true,
+   "rules_first_committed": "5e30c39574910a48c793c8c6d0971176aea4fff2",
+   "rules_precede_applier": true,
+   "seconds_between": 743
   },
   "ruleset_sha256": "94d1b372a88ef88012414e71ac268dfab6d1c329f9b8ea13848e880d415557df",
   "ruleset_version": "2026.09.18.1"
@@ -288,7 +291,7 @@
   },
   "python": "3.13.9"
  },
- "generated_utc": "2026-09-18T13:11:07+00:00",
+ "generated_utc": "2026-09-18T13:15:14+00:00",
  "notes": "Indicator-level reconciliation of a reporting view against its source event stores.",
  "schema": "metricaudit/provenance/1",
  "settings": {

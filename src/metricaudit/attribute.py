@@ -177,6 +177,41 @@ CANDIDATES: tuple[Candidate, ...] = (
 )
 
 
+# Tables whose timestamps could plausibly stand behind a "last active" column.
+# Registered so that a temporal divergence is tested against alternative sources
+# rather than reported as a mystery.
+TEMPORAL_SOURCES = {
+    "operational_store_max": "operational",
+    "reporting_store_max": "reporting",
+    "agent_decision_max": "decisions",
+    "learner_question_max": "qa",
+}
+
+
+def _latest(frame: pd.DataFrame, index: pd.Index) -> pd.Series:
+    stamps = pd.to_datetime(frame["created_at"], format="ISO8601", utc=True)
+    return stamps.groupby(frame["group_id"]).max().reindex(index)
+
+
+def temporal_predictions(corpus: Corpus, index: pd.Index) -> pd.DataFrame:
+    """What each candidate source would put in a "last active" column.
+
+    A column of this kind can be stamped from any table the platform happens to
+    touch last, and which one it is decides whether the column means "the group
+    last did something" or "the agent last did something to the group". Those
+    are different claims about a class of children and the view does not say
+    which it is making.
+    """
+    out = {}
+    for name, table in TEMPORAL_SOURCES.items():
+        if table in corpus:
+            out[name] = _latest(corpus[table], index)
+    if out:
+        combined = pd.concat(out.values(), axis=1).max(axis=1)
+        out["any_table_max"] = combined
+    return pd.DataFrame(out, index=index)
+
+
 def predictions(corpus: Corpus, indicator: str, index: pd.Index) -> pd.DataFrame:
     """Every candidate's prediction for one indicator, per group."""
     out = {}
@@ -185,6 +220,63 @@ def predictions(corpus: Corpus, indicator: str, index: pd.Index) -> pd.DataFrame
         if predicted is not None:
             out[candidate.name] = predicted
     return pd.DataFrame(out, index=index)
+
+
+def _attribute_temporal(corpus: Corpus, indicator: str, block: pd.DataFrame,
+                        numbers: pd.Series) -> list[dict]:
+    """Match a reported timestamp to the table that most likely produced it.
+
+    Attribution here is within a declared tolerance rather than exact, because
+    two writes of one event land microseconds apart and calling that a
+    divergence would describe the clock rather than the pipeline. The tolerance
+    is stated in the settings and is justified by the write lag the parity
+    analysis measures, so it is an empirical quantity and not a concession.
+    """
+    index = block.index
+    matrix = temporal_predictions(corpus, index)
+    reported = pd.to_datetime(block["reported"], format="ISO8601", utc=True)
+    tolerance = SETTINGS.temporal_tolerance_s
+
+    rows = []
+    for group_id in index:
+        if bool(block.loc[group_id, "matches"]):
+            rows.append({"indicator": indicator, "group_id": group_id,
+                         "group_number": int(numbers.loc[group_id]),
+                         "reported": np.nan, "mechanism": "no divergence",
+                         "predicted": np.nan, "residual": 0.0,
+                         "reason": "the declared rule reproduced the reported value"})
+            continue
+
+        offsets = (matrix.loc[group_id] - reported.loc[group_id]) \
+            .map(lambda d: abs(d.total_seconds()) if pd.notna(d) else np.nan)
+        offsets = offsets.dropna()
+        if offsets.empty:
+            rows.append({"indicator": indicator, "group_id": group_id,
+                         "group_number": int(numbers.loc[group_id]),
+                         "reported": np.nan, "mechanism": UNATTRIBUTED,
+                         "predicted": np.nan, "residual": np.nan,
+                         "reason": "no candidate source carries a timestamp for "
+                                   "this group"})
+            continue
+
+        within = offsets[offsets <= tolerance]
+        nearest = offsets.idxmin()
+        if len(within) == 1:
+            mechanism, reason = within.index[0], ""
+        elif len(within) > 1:
+            mechanism = " or ".join(sorted(within.index))
+            reason = "candidate sources are not separable within the write lag"
+        else:
+            mechanism = UNATTRIBUTED
+            reason = (f"no candidate source is within {tolerance:g} s; nearest "
+                      f"was {nearest} at {offsets[nearest]:.3f} s")
+
+        rows.append({"indicator": indicator, "group_id": group_id,
+                     "group_number": int(numbers.loc[group_id]),
+                     "reported": np.nan, "mechanism": mechanism,
+                     "predicted": np.nan, "residual": float(offsets[nearest]),
+                     "reason": reason})
+    return rows
 
 
 def attribute(corpus: Corpus, per_group: pd.DataFrame,
@@ -215,15 +307,19 @@ def attribute(corpus: Corpus, per_group: pd.DataFrame,
         # frame stacks indicators of several types and the stacked dtype is
         # object whatever any single indicator holds.
         if not bool(block["numeric"].iloc[0]):
-            for group_id in index:
-                if bool(block.loc[group_id, "matches"]):
-                    continue
-                rows.append({"indicator": indicator, "group_id": group_id,
-                             "group_number": int(numbers.loc[group_id]),
-                             "reported": np.nan, "mechanism": UNATTRIBUTED,
-                             "predicted": np.nan, "residual": np.nan,
-                             "reason": "the column is not numeric, so no "
-                                       "arithmetic mechanism applies to it"})
+            if bool(block.get("temporal", pd.Series([False])).iloc[0]):
+                rows.extend(_attribute_temporal(corpus, indicator, block, numbers))
+            else:
+                for group_id in index:
+                    if bool(block.loc[group_id, "matches"]):
+                        continue
+                    rows.append({"indicator": indicator, "group_id": group_id,
+                                 "group_number": int(numbers.loc[group_id]),
+                                 "reported": np.nan, "mechanism": UNATTRIBUTED,
+                                 "predicted": np.nan, "residual": np.nan,
+                                 "reason": "the column is neither numeric nor a "
+                                           "timestamp, so no registered "
+                                           "mechanism applies to it"})
             continue
 
         matrix = predictions(corpus, indicator, index)

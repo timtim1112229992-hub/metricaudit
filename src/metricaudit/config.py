@@ -108,6 +108,15 @@ class Settings:
     # asserted.
     mechanism_tolerance: int = 0
 
+    # Seconds within which a recomputed timestamp counts as reproducing a
+    # reported one. Non-zero, unlike every other tolerance here, and the reason
+    # is empirical rather than a concession: the parity analysis measures the
+    # lag between a pipeline's two writes of one event, and a timestamp column
+    # differing by less than that is recording the same moment through a
+    # different write. A divergence larger than this is something else, which is
+    # exactly the distinction the tolerance is set to draw.
+    temporal_tolerance_s: float = 1.0
+
     # Seconds either side of an operational record within which a reporting
     # record carrying the same group, category and payload is treated as the
     # second write of one event. The two stores are written in sequence rather
