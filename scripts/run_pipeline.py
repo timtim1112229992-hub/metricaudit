@@ -6,6 +6,7 @@ output accordingly, and publishes no provenance.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -17,6 +18,13 @@ from metricaudit.pipeline import gate_report, run  # noqa: E402
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    parser = argparse.ArgumentParser(description=__doc__)
+    # The synthetic guard tells the caller to write elsewhere when a restricted
+    # run already occupies the output directory, so there has to be an elsewhere.
+    parser.add_argument("--output", type=Path, default=None,
+                        help="directory for results.json, defaulting to outputs/")
+    args = parser.parse_args()
+
     corpus = load()
     print(f"source: {corpus.source}")
     for name, frame in sorted(corpus.frames.items()):
@@ -26,7 +34,7 @@ def main() -> int:
         print(f"  {name:<14} {len(frame):>6} rows, "
               f"{len(mapping['read']):>2} columns read{note}")
 
-    results = run(corpus)
+    results = run(corpus, output_dir=args.output)
     print()
     print(gate_report(results))
     return 0

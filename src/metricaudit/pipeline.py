@@ -202,6 +202,14 @@ def gates(corpus: Corpus, results: dict) -> dict:
           "released": released,
           "unexpected": sorted(set(released) - permitted),
           "note": "no record, estimate, table or figure may appear here"}
+    if corpus.source != "restricted":
+        # A synthetic run writes no provenance, so anything in that directory is
+        # left over from a restricted run. Reporting it as this run's release
+        # would credit the synthetic run with a package it did not produce.
+        g6 = {"pass": True, "released": [],
+              "unexpected": [],
+              "note": f"a {corpus.source} run publishes no provenance; any "
+                      f"files in the directory belong to an earlier run"}
 
     return {
         "G1_every_column_classified": {
