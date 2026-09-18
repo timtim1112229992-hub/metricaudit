@@ -178,7 +178,11 @@ def table_prediction_totals(results: dict) -> pd.DataFrame:
     rows = [{
         "Source of the figure": "Reported by the view",
         "Total across groups": _fmt(reported),
-        "Ratio to the reported total": "1.00",
+        # Through the same formatter as every other ratio in the column. Writing
+        # the value out here instead gives the reference row a different number
+        # of decimals from the candidate that matches it exactly, which reads as
+        # a difference between them.
+        "Ratio to the reported total": _fmt(1.0),
     }]
     for name in sorted(candidates):
         total = float(frame[name].sum())
