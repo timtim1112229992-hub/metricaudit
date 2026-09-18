@@ -109,13 +109,22 @@ def _absent_idempotency(corpus: Corpus, indicator: str,
 
 
 def _gauge_summation(corpus: Corpus, indicator: str, index: pd.Index) -> pd.Series | None:
-    """A cumulative counter is summed instead of being read once.
+    """A running counter is summed instead of being read once.
 
-    The client maintains a running total and reports its current value on every
-    message. An aggregate that sums that field across messages is adding a gauge
-    to itself, and the result grows with the square of the activity rather than
-    with the activity. This is the candidate that distinguishes a counter that
-    is wrong by a factor of two from one that is wrong without bound.
+    The client maintains a counter and reports its current value on every
+    message it sends. Summing that field across messages adds the gauge to
+    itself: each increment is counted once for every message that follows it
+    while the counter stands. The total therefore grows with the product of the
+    increments and the messages carrying them, not with the increments alone,
+    which is what separates a counter wrong by a bounded factor from one wrong
+    without bound.
+
+    The counter in this corpus resets periodically rather than accumulating
+    across the session, so the re-counting is bounded by the length of a run
+    rather than by the length of the session. That makes the inflation smaller
+    than an accumulating counter would produce and much harder to recognise,
+    since neither the reported total nor the stored field carries any trace of
+    where the resets fell.
     """
     gauge = GAUGE_FOR_INDICATOR.get(indicator)
     if gauge is None or "decisions" not in corpus:
@@ -128,12 +137,14 @@ def _gauge_summation(corpus: Corpus, indicator: str, index: pd.Index) -> pd.Seri
 
 
 def _gauge_final(corpus: Corpus, indicator: str, index: pd.Index) -> pd.Series | None:
-    """The cumulative counter read once, at its final value.
+    """The running counter read once, at its highest observed value.
 
-    What the reporting column would hold if the gauge were used as a gauge. Kept
-    in the candidate set because it is the correct use of the same field, so its
-    distance from the observation measures the cost of the error rather than
-    merely its presence.
+    What the reporting column would hold if the gauge were used as a gauge
+    rather than as an increment. Kept in the candidate set because it is the
+    disciplined use of the same field, and its distance from the truth is
+    therefore the more interesting measurement: because the counter resets, its
+    highest value is the highest within one run and not the session total, so
+    reading it correctly still does not recover the quantity the column names.
     """
     gauge = GAUGE_FOR_INDICATOR.get(indicator)
     if gauge is None:
@@ -167,11 +178,11 @@ CANDIDATES: tuple[Candidate, ...] = (
               "than once and nothing collapsed the repeats", _repeated_client_emission),
     Candidate("absent_idempotency", "every arrival counted, there being no key "
               "by which a repeat could be recognised", _absent_idempotency),
-    Candidate("gauge_summation", "a running cumulative counter summed across "
-              "every message that carried it, rather than read once",
-              _gauge_summation),
-    Candidate("gauge_final_value", "the running counter read once at its final "
-              "value, which is its correct use", _gauge_final),
+    Candidate("gauge_summation", "a running counter summed across every message "
+              "that carried it, rather than read once", _gauge_summation),
+    Candidate("gauge_final_value", "the running counter read once at its highest "
+              "observed value, which is the disciplined use of the field",
+              _gauge_final),
     Candidate("decision_count", "agent turns counted in place of pupil actions",
               _decision_count),
 )
@@ -210,6 +221,64 @@ def temporal_predictions(corpus: Corpus, index: pd.Index) -> pd.DataFrame:
         combined = pd.concat(out.values(), axis=1).max(axis=1)
         out["any_table_max"] = combined
     return pd.DataFrame(out, index=index)
+
+
+def gauge_profile(corpus: Corpus, indicator: str = "help_click_count") -> pd.DataFrame:
+    """Describe the counter the attributed mechanism sums.
+
+    Attribution establishes that summing the field reproduces the reported
+    column. It does not establish what the field is, and the two are different
+    claims. A counter that accumulates across a session and one that resets
+    periodically both reproduce an inflated total when summed, but they imply
+    different magnitudes, different diagnostics and different remedies, so the
+    description has to be measured rather than assumed.
+
+    A run is a maximal stretch of a group's snapshots, in time order, over which
+    the counter does not fall. Reporting the number of runs alongside the
+    highest value reached and the value left at the end is what distinguishes
+    the two shapes: an accumulating counter has one run per group and ends at
+    its maximum, and this one does neither.
+    """
+    gauge = GAUGE_FOR_INDICATOR.get(indicator)
+    if gauge is None or "decisions" not in corpus:
+        return pd.DataFrame()
+    dec = corpus["decisions"]
+    column = gauge["snapshot"]
+    if column not in dec.columns:
+        return pd.DataFrame()
+
+    view = corpus["view"].set_index("group_id")
+    numbers = view["group_number"]
+    stamps = pd.to_datetime(dec["created_at"], format="ISO8601", utc=True)
+
+    rows = []
+    for group_id, block in dec.assign(_t=stamps).groupby("group_id"):
+        block = block.sort_values("_t")
+        values = block[column].astype(float).to_numpy()
+        if not len(values):
+            continue
+        breaks = [0] + [i for i in range(1, len(values)) if values[i] < values[i - 1]]
+        breaks.append(len(values))
+        runs = [(breaks[k], breaks[k + 1]) for k in range(len(breaks) - 1)]
+        stages = block["stage"].to_numpy() if "stage" in block.columns else None
+        at_stage_change = 0 if stages is None else sum(
+            1 for i in breaks[1:-1] if stages[i] != stages[i - 1])
+
+        rows.append({
+            "indicator": indicator,
+            "group_id": group_id,
+            "group_number": int(numbers.get(group_id, -1)),
+            "n_snapshots": len(values),
+            "n_runs": len(runs),
+            "n_resets": len(runs) - 1,
+            "resets_at_a_stage_change": at_stage_change,
+            "longest_run": max(e - s for s, e in runs),
+            "highest_value": float(values.max()),
+            "final_value": float(values[-1]),
+            "summed": float(values.sum()),
+            "accumulates_across_the_session": len(runs) == 1,
+        })
+    return pd.DataFrame(rows).sort_values("group_number").reset_index(drop=True)
 
 
 def predictions(corpus: Corpus, indicator: str, index: pd.Index) -> pd.DataFrame:

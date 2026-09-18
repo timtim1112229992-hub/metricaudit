@@ -160,6 +160,29 @@ def table_predictions(results: dict) -> pd.DataFrame:
     return out
 
 
+def table_gauge_profile(results: dict) -> pd.DataFrame:
+    """The shape of the field the attributed mechanism sums.
+
+    Carried as a table because the mechanism's name implies a claim about the
+    field, and a reader should be able to check that claim rather than take it.
+    """
+    frame = _frame(results, "gauge_profile")
+    if frame.empty:
+        return frame
+    return pd.DataFrame([{
+        "Group": int(row["group_number"]),
+        "Snapshots carrying the counter": int(row["n_snapshots"]),
+        "Runs": int(row["n_runs"]),
+        "Resets": int(row["n_resets"]),
+        "Resets at a change of stage": int(row["resets_at_a_stage_change"]),
+        "Longest run": int(row["longest_run"]),
+        "Highest value reached": _fmt(row["highest_value"]),
+        "Value at the last snapshot": _fmt(row["final_value"]),
+        "Summed across snapshots": _fmt(row["summed"]),
+        "Accumulates across the session": _fmt(bool(row["accumulates_across_the_session"])),
+    } for _, row in frame.iterrows()])
+
+
 def table_completeness(results: dict) -> pd.DataFrame:
     frame = _frame(results, "completeness")
     return pd.DataFrame([{
@@ -321,14 +344,16 @@ TABLES = (
      table_divergence_estimate),
     ("Table 6. Candidate mechanism predictions per group", table_predictions),
     ("Table 7. Mechanism attribution", table_attribution),
-    ("Table 8. Completeness and referential integrity", table_completeness),
-    ("Table 9. Reconciliation under alternative assumptions", table_sweep),
-    ("Table 10. Assumption dependence by column", table_dependence),
-    ("Table 11. Group-level statistics under reported and reconciled values",
+    ("Table 8. Shape of the counter the attributed mechanism sums",
+     table_gauge_profile),
+    ("Table 9. Completeness and referential integrity", table_completeness),
+    ("Table 10. Reconciliation under alternative assumptions", table_sweep),
+    ("Table 11. Assumption dependence by column", table_dependence),
+    ("Table 12. Group-level statistics under reported and reconciled values",
      table_consequence),
-    ("Table 12. Association with an outcome, under reported and reconciled values",
+    ("Table 13. Association with an outcome, under reported and reconciled values",
      table_association),
-    ("Table 13. Collections in the archived export and their subset relations",
+    ("Table 14. Collections in the archived export and their subset relations",
      table_archive),
 )
 

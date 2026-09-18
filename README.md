@@ -68,6 +68,13 @@ an observation to within a few units has been asserted rather than shown.
 The registered candidates are cross-store summation, repeated client emission,
 absent idempotency, gauge summation, gauge final value, and decision count.
 
+Attribution says which mechanism reproduces an observation. It does not say what
+the implicated field is, and the two are separate claims. A counter that
+accumulates across a session and one that resets periodically both inflate a
+total when summed, but they imply different magnitudes and different remedies,
+so `gauge_profile` measures the shape of the field rather than assuming it,
+reporting the runs, the highest value reached and the value left at the end.
+
 ## Two stores, no shared key
 
 The platform writes each client event to an operational store and to a reporting

@@ -85,8 +85,9 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
     divergence = reconcile.divergence_summary(per_group)
     temporal = reconcile.temporal_summary(per_group)
 
-    # P5: mechanism attribution.
+    # P5: mechanism attribution, and a description of the field it implicates.
     attribution, prediction_matrix = attribute.attribute(corpus, per_group, per_column)
+    gauge_profile = attribute.gauge_profile(corpus)
 
     # P6: completeness.
     completeness = audit.completeness(corpus)
@@ -116,6 +117,7 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
         "temporal_divergence": temporal,
         "attribution": attribution,
         "prediction_matrix": prediction_matrix,
+        "gauge_profile": gauge_profile,
         "completeness": completeness,
         "name_drift": drift,
         "unnamed_by_category": unnamed,
