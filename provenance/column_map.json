@@ -1,0 +1,118 @@
+{
+ "columns": {
+  "decisions": {
+   "parsed_for_numeric_keys_only": {
+    "metrics_snapshot_json": [
+     "coreFilled",
+     "coreTotal",
+     "helpClicks"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "action",
+    "trigger_source",
+    "metrics_snapshot_json",
+    "created_at"
+   ]
+  },
+  "groups": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "session_id",
+    "group_number",
+    "name",
+    "current_stage",
+    "status",
+    "last_active_at",
+    "created_at"
+   ]
+  },
+  "operational": {
+   "parsed_for_numeric_keys_only": {
+    "payload_json": [
+     "completion_rate",
+     "help_count",
+     "is_completed",
+     "stage"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "event_type",
+    "target",
+    "payload_json",
+    "client_ts",
+    "created_at"
+   ]
+  },
+  "qa": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "created_at"
+   ]
+  },
+  "reporting": {
+   "parsed_for_numeric_keys_only": {
+    "payload_json": [
+     "completion_rate",
+     "help_clicks",
+     "help_count",
+     "is_completed",
+     "stage"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "group_name",
+    "event_type",
+    "payload_json",
+    "created_at"
+   ]
+  },
+  "submissions": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "group_id",
+    "stage",
+    "stage_key",
+    "is_completed",
+    "completion_rate",
+    "completed_at",
+    "updated_at"
+   ]
+  },
+  "view": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "group_id",
+    "session_id",
+    "group_number",
+    "group_name",
+    "current_stage",
+    "group_status",
+    "last_active_at",
+    "completed_stage_count",
+    "avg_completion_pct",
+    "help_click_count",
+    "quiz_wrong_count",
+    "interaction_count"
+   ]
+  }
+ },
+ "schema": "metricaudit/columnmap/1"
+}

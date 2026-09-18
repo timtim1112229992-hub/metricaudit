@@ -68,12 +68,20 @@ PAYLOAD_KEYS = {
 # help-click gauge is recorded.
 SNAPSHOT_KEYS = ("helpClicks", "coreFilled", "coreTotal")
 
-# Columns that carry text a child or a teacher wrote. None may reach a written
-# file, and the release writer refuses rather than filters.
-FORBIDDEN_COLUMNS = ("payload_json", "metrics_snapshot_json", "form_snapshot_json",
-                     "form_data_json", "question", "answer", "message", "hint",
-                     "scaffolds", "class_name", "name", "group_name",
-                     "access_token", "teacher_pin", "join_code")
+# Columns that may hold text a child or a teacher wrote. Two of them have to be
+# read, because the gauge behind the disputed indicator lives inside a
+# serialised payload and there is no other route to it. They are read only
+# through the narrow extractor, which takes declared numeric keys by name, and
+# the release writer refuses any column map that touches one of them without
+# declaring which keys it took.
+TEXT_BEARING_COLUMNS = ("payload_json", "metrics_snapshot_json",
+                        "form_snapshot_json", "form_data_json", "question",
+                        "answer", "message", "hint", "scaffolds", "class_name")
+
+# Columns that must never appear in a written artefact, whatever the reason for
+# having read them.
+FORBIDDEN_COLUMNS = TEXT_BEARING_COLUMNS + ("access_token", "teacher_pin",
+                                            "join_code")
 
 # The identity columns of the reporting view. These are keys rather than
 # measurements, and they are classified separately so that the count of

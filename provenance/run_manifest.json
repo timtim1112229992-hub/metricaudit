@@ -1,0 +1,344 @@
+{
+ "code": {
+  "branch": "master",
+  "commit": "5e30c39574910a48c793c8c6d0971176aea4fff2",
+  "dirty": true,
+  "rule_ordering": {
+   "checked": false,
+   "reason": "commit history unavailable"
+  },
+  "ruleset_sha256": "94d1b372a88ef88012414e71ac268dfab6d1c329f9b8ea13848e880d415557df",
+  "ruleset_version": "2026.09.18.1"
+ },
+ "column_map": {
+  "decisions": {
+   "parsed_for_numeric_keys_only": {
+    "metrics_snapshot_json": [
+     "coreFilled",
+     "coreTotal",
+     "helpClicks"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "action",
+    "trigger_source",
+    "metrics_snapshot_json",
+    "created_at"
+   ]
+  },
+  "groups": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "session_id",
+    "group_number",
+    "name",
+    "current_stage",
+    "status",
+    "last_active_at",
+    "created_at"
+   ]
+  },
+  "operational": {
+   "parsed_for_numeric_keys_only": {
+    "payload_json": [
+     "completion_rate",
+     "help_count",
+     "is_completed",
+     "stage"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "event_type",
+    "target",
+    "payload_json",
+    "client_ts",
+    "created_at"
+   ]
+  },
+  "qa": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "stage",
+    "created_at"
+   ]
+  },
+  "reporting": {
+   "parsed_for_numeric_keys_only": {
+    "payload_json": [
+     "completion_rate",
+     "help_clicks",
+     "help_count",
+     "is_completed",
+     "stage"
+    ]
+   },
+   "read": [
+    "id",
+    "session_id",
+    "group_id",
+    "group_name",
+    "event_type",
+    "payload_json",
+    "created_at"
+   ]
+  },
+  "submissions": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "id",
+    "group_id",
+    "stage",
+    "stage_key",
+    "is_completed",
+    "completion_rate",
+    "completed_at",
+    "updated_at"
+   ]
+  },
+  "view": {
+   "parsed_for_numeric_keys_only": {},
+   "read": [
+    "group_id",
+    "session_id",
+    "group_number",
+    "group_name",
+    "current_stage",
+    "group_status",
+    "last_active_at",
+    "completed_stage_count",
+    "avg_completion_pct",
+    "help_click_count",
+    "quiz_wrong_count",
+    "interaction_count"
+   ]
+  }
+ },
+ "counting_rules": [
+  {
+   "column": "interaction_count",
+   "deduplication": "none; every stored record counts once, including any the client sent more than once, because the column claims to describe what the store holds",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier belong to no group and are excluded",
+   "source": "operational",
+   "statement": "The number of records the operational store holds for the group. The column's name promises a count of that group's interactions, and the operational store is the log of them.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "help_click_count",
+   "deduplication": "none; each stored event counts once",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The number of times the group asked the agent for help, taken as the number of agent.help_click records in the operational store. One click by a pupil produces one record, so one record is one request.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "quiz_wrong_count",
+   "deduplication": "none; each stored event counts once",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The number of incorrect quiz answers the group submitted, taken as the number of quiz.wrong_answer records in the operational store.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "completed_stage_count",
+   "deduplication": "none; one submission row per group and stage",
+   "kind": "count",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The number of the lesson's stages the group completed, taken as the number of that group's stage submissions whose completion flag is set.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "avg_completion_pct",
+   "deduplication": "none",
+   "kind": "aggregate",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The group's mean stage completion rate as a whole percentage, taken as the mean of the completion rate across that group's submissions, multiplied by one hundred and rounded. Half is rounded upward, which is the convention a reader is most likely to assume; the alternatives are tested in the assumption sweep.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "current_stage",
+   "deduplication": "none",
+   "kind": "derived",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The furthest stage the group reached, taken as the highest stage index among that group's submissions.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "last_active_at",
+   "deduplication": "none",
+   "kind": "derived",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The time of the group's most recent activity, taken as the latest creation timestamp among that group's operational records.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "group_number",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's number, as held on the group record.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_name",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's display name, as held on the group record. The view stores it alongside the identifier rather than joining for it, so the two can drift apart.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "session_id",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The session the group belongs to, as held on the group record.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_id",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's identifier, which is the view's own key and is checked for membership against the group table rather than recomputed.",
+   "verifiable": false,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_status",
+   "deduplication": "not applicable",
+   "kind": "derived",
+   "missing_identifiers": "not applicable",
+   "source": "none",
+   "statement": "The group's help state at the close of the session. No source path exists: the state is written by the agent as it runs and is not derivable from any stored event, since nothing records when a group left the state as well as when it entered one. Declared unverifiable before execution rather than after a recomputation failed.",
+   "verifiable": false,
+   "window": "not applicable"
+  }
+ ],
+ "counts": {
+  "decisions.columns_ignored": 4,
+  "decisions.columns_read": 8,
+  "decisions.rows_analysed": 316,
+  "decisions.rows_in_file": 316,
+  "groups.columns_ignored": 2,
+  "groups.columns_read": 8,
+  "groups.rows_analysed": 12,
+  "groups.rows_in_file": 12,
+  "operational.columns_ignored": 0,
+  "operational.columns_read": 9,
+  "operational.rows_analysed": 1401,
+  "operational.rows_in_file": 1401,
+  "qa.columns_ignored": 5,
+  "qa.columns_read": 5,
+  "qa.rows_analysed": 60,
+  "qa.rows_in_file": 60,
+  "reporting.columns_ignored": 0,
+  "reporting.columns_read": 7,
+  "reporting.rows_analysed": 1774,
+  "reporting.rows_in_file": 1774,
+  "submissions.columns_ignored": 1,
+  "submissions.columns_read": 8,
+  "submissions.rows_analysed": 83,
+  "submissions.rows_in_file": 83,
+  "view.columns_ignored": 0,
+  "view.columns_read": 12,
+  "view.rows_analysed": 12,
+  "view.rows_in_file": 12
+ },
+ "environment": {
+  "implementation": "CPython",
+  "packages": {
+   "matplotlib": "3.10.8",
+   "numpy": "2.4.6",
+   "openpyxl": "3.1.5",
+   "pandas": "2.3.3",
+   "scipy": "1.17.1"
+  },
+  "python": "3.13.9"
+ },
+ "generated_utc": "2026-09-18T13:11:07+00:00",
+ "notes": "Indicator-level reconciliation of a reporting view against its source event stores.",
+ "schema": "metricaudit/provenance/1",
+ "settings": {
+  "bootstrap_replicates": 10000,
+  "confidence": 0.95,
+  "dedup_modes": [
+   "as_stored",
+   "distinct_composite",
+   "distinct_within_window"
+  ],
+  "mechanism_tolerance": 0,
+  "parity_window_s": 2.0,
+  "rounding_modes": [
+   "half_up",
+   "half_even",
+   "floor",
+   "ceil"
+  ],
+  "seed": 20260918,
+  "tolerance": 0
+ },
+ "source": "restricted",
+ "tables": {
+  "decisions": {
+   "aggregate_sha256": "4de84a9f36d2d3ea3acfe90784971ae6053c661fb27318b2f480685f6df1cabc",
+   "n_records": 316
+  },
+  "groups": {
+   "aggregate_sha256": "c60dbb16b4b617f768683a841bf2d159bab1869d32fc03ea01a85a5aefb950a8",
+   "n_records": 12
+  },
+  "operational": {
+   "aggregate_sha256": "add0688109e6930fe521dec377a1ad087ddd8e18455392e202fae89b155200f0",
+   "n_records": 1401
+  },
+  "qa": {
+   "aggregate_sha256": "ba46d484a5ff72336b210ee77098ed12aaeb97b4420e75dee254406ceccf2542",
+   "n_records": 60
+  },
+  "reporting": {
+   "aggregate_sha256": "5f63f081dec933566308ec0d2f307ac737c391465c8f6f645f9902a5d6272d50",
+   "n_records": 1774
+  },
+  "submissions": {
+   "aggregate_sha256": "bee31efa1ac6b86e00d9799c4e1ef27a3fcc11f181bc770e42ea90512fe0d42b",
+   "n_records": 83
+  },
+  "view": {
+   "aggregate_sha256": "03eac255a1931a6f8b5dc0b9f028c05cb8a532f5733735dd60cc74b0cf8f1f8c",
+   "n_records": 12
+  }
+ }
+}

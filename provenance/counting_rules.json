@@ -1,0 +1,127 @@
+{
+ "rules": [
+  {
+   "column": "interaction_count",
+   "deduplication": "none; every stored record counts once, including any the client sent more than once, because the column claims to describe what the store holds",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier belong to no group and are excluded",
+   "source": "operational",
+   "statement": "The number of records the operational store holds for the group. The column's name promises a count of that group's interactions, and the operational store is the log of them.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "help_click_count",
+   "deduplication": "none; each stored event counts once",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The number of times the group asked the agent for help, taken as the number of agent.help_click records in the operational store. One click by a pupil produces one record, so one record is one request.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "quiz_wrong_count",
+   "deduplication": "none; each stored event counts once",
+   "kind": "count",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The number of incorrect quiz answers the group submitted, taken as the number of quiz.wrong_answer records in the operational store.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "completed_stage_count",
+   "deduplication": "none; one submission row per group and stage",
+   "kind": "count",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The number of the lesson's stages the group completed, taken as the number of that group's stage submissions whose completion flag is set.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "avg_completion_pct",
+   "deduplication": "none",
+   "kind": "aggregate",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The group's mean stage completion rate as a whole percentage, taken as the mean of the completion rate across that group's submissions, multiplied by one hundred and rounded. Half is rounded upward, which is the convention a reader is most likely to assume; the alternatives are tested in the assumption sweep.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "current_stage",
+   "deduplication": "none",
+   "kind": "derived",
+   "missing_identifiers": "submissions carry a group identifier in every case",
+   "source": "submissions",
+   "statement": "The furthest stage the group reached, taken as the highest stage index among that group's submissions.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "last_active_at",
+   "deduplication": "none",
+   "kind": "derived",
+   "missing_identifiers": "records without a group identifier are excluded",
+   "source": "operational",
+   "statement": "The time of the group's most recent activity, taken as the latest creation timestamp among that group's operational records.",
+   "verifiable": true,
+   "window": "the whole session"
+  },
+  {
+   "column": "group_number",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's number, as held on the group record.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_name",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's display name, as held on the group record. The view stores it alongside the identifier rather than joining for it, so the two can drift apart.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "session_id",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The session the group belongs to, as held on the group record.",
+   "verifiable": true,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_id",
+   "deduplication": "not applicable",
+   "kind": "key",
+   "missing_identifiers": "not applicable",
+   "source": "groups",
+   "statement": "The group's identifier, which is the view's own key and is checked for membership against the group table rather than recomputed.",
+   "verifiable": false,
+   "window": "not applicable"
+  },
+  {
+   "column": "group_status",
+   "deduplication": "not applicable",
+   "kind": "derived",
+   "missing_identifiers": "not applicable",
+   "source": "none",
+   "statement": "The group's help state at the close of the session. No source path exists: the state is written by the agent as it runs and is not derivable from any stored event, since nothing records when a group left the state as well as when it entered one. Declared unverifiable before execution rather than after a recomputation failed.",
+   "verifiable": false,
+   "window": "not applicable"
+  }
+ ],
+ "ruleset_sha256": "94d1b372a88ef88012414e71ac268dfab6d1c329f9b8ea13848e880d415557df",
+ "ruleset_version": "2026.09.18.1",
+ "schema": "metricaudit/rules/1"
+}
