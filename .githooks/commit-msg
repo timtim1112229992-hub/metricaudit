@@ -1,0 +1,19 @@
+#!/bin/sh
+# Strip any trailer crediting an automated editor as a co-author.
+#
+# Tooling that edits this repository appends such a trailer on its own, without
+# being asked and without showing it to the person committing. The forge then
+# renders it as co-authorship. Attribution here belongs to the account of record
+# and to nobody else, so the trailer is removed at the last point before the
+# message is written rather than being noticed afterwards in the history.
+#
+# Enabled by pointing git at this directory:
+#     git config core.hooksPath .githooks
+#
+# The test suite checks the history for trailers regardless, because a hook that
+# has not been enabled protects nothing.
+
+set -e
+message="$1"
+grep -v -i -E '^[[:space:]]*co-authored-by[[:space:]]*:' "$message" > "$message.stripped"
+mv "$message.stripped" "$message"
