@@ -16,12 +16,12 @@ from .rules import RULES
 
 def _fmt(value, places: int = 3) -> str:
     if value is None:
-        return "\u2014"
+        return "\u2013"
     if isinstance(value, bool):
         return "yes" if value else "no"
     if isinstance(value, float):
         if pd.isna(value):
-            return "\u2014"
+            return "\u2013"
         if value == int(value) and abs(value) < 1e9:
             return f"{int(value)}"
         return f"{value:.{places}f}"
@@ -61,24 +61,24 @@ def table_census(results: dict) -> pd.DataFrame:
             "Shared identifiers": int(row["n_shared_identifiers"]),
             "Jaccard on identifiers": _fmt(float(row["jaccard"])),
             "Pairs matched on a composite key": (int(match["n_matched_pairs"].iloc[0])
-                                                 if len(match) else "\u2014"),
+                                                 if len(match) else "\u2013"),
             "Unmatched": (int(match["operational_unmatched"].iloc[0])
-                          if len(match) else "\u2014"),
+                          if len(match) else "\u2013"),
         })
     for category, count in (census["exclusive_to_reporting"] or {}).items():
         rows.append({"Event category": f"{category} (reporting store only)",
                      "Operational store": 0, "Reporting store": int(count),
                      "Difference": int(count), "Shared identifiers": 0,
-                     "Jaccard on identifiers": "\u2014",
-                     "Pairs matched on a composite key": "\u2014",
-                     "Unmatched": "\u2014"})
+                     "Jaccard on identifiers": "\u2013",
+                     "Pairs matched on a composite key": "\u2013",
+                     "Unmatched": "\u2013"})
     rows.append({"Event category": "All categories",
                  "Operational store": int(census["n_operational"]),
                  "Reporting store": int(census["n_reporting"]),
                  "Difference": int(census["raw_difference"]),
-                 "Shared identifiers": 0, "Jaccard on identifiers": "\u2014",
-                 "Pairs matched on a composite key": "\u2014",
-                 "Unmatched": "\u2014"})
+                 "Shared identifiers": 0, "Jaccard on identifiers": "\u2013",
+                 "Pairs matched on a composite key": "\u2013",
+                 "Unmatched": "\u2013"})
     return pd.DataFrame(rows)
 
 
@@ -137,7 +137,7 @@ def table_attribution(results: dict) -> pd.DataFrame:
             "Reported": _fmt(row["reported"]),
             "Mechanism": row["mechanism"],
             "Predicted": _fmt(row["predicted"]),
-            "Residual": ("\u2014" if residual is None or pd.isna(residual)
+            "Residual": ("\u2013" if residual is None or pd.isna(residual)
                          else f"{float(residual):.3f} s" if temporal
                          else _fmt(float(residual), 3)),
             "Note": row["reason"] or "",
@@ -158,6 +158,36 @@ def table_predictions(results: dict) -> pd.DataFrame:
                    .capitalize() if c != "group_number" else "Group"
                    for c in out.columns]
     return out
+
+
+def table_prediction_totals(results: dict) -> pd.DataFrame:
+    """What each candidate predicts in total, beside the reported figure.
+
+    The per-group matrix carries the evidence and is too wide to read. This
+    collapses it to one row per candidate, which is the form in which the
+    separation between candidates is obvious: either a candidate lands on the
+    reported total or it is nowhere near it.
+    """
+    frame = _frame(results, "prediction_matrix")
+    if frame.empty:
+        return frame
+    candidates = [c for c in frame.columns
+                  if c not in ("indicator", "group_id", "group_number", "reported")]
+    reported = float(frame["reported"].sum())
+
+    rows = [{
+        "Source of the figure": "Reported by the view",
+        "Total across groups": _fmt(reported),
+        "Ratio to the reported total": "1.00",
+    }]
+    for name in sorted(candidates):
+        total = float(frame[name].sum())
+        rows.append({
+            "Source of the figure": name.replace("_", " "),
+            "Total across groups": _fmt(total),
+            "Ratio to the reported total": _fmt(total / reported) if reported else "",
+        })
+    return pd.DataFrame(rows)
 
 
 def table_gauge_profile(results: dict) -> pd.DataFrame:
@@ -194,7 +224,7 @@ def table_completeness(results: dict) -> pd.DataFrame:
         "95% interval": f"{float(row['ci_lower']):.4f} to {float(row['ci_upper']):.4f}",
         "One-sided bound where zero": (_fmt(float(row["zero_bound"]), 4)
                                        if row.get("zero_bound") is not None
-                                       else "\u2014"),
+                                       else "\u2013"),
     } for _, row in frame.iterrows()])
 
 
@@ -267,17 +297,17 @@ def table_divergence_estimate(results: dict) -> pd.DataFrame:
             "Mean ratio": _fmt(mean_ratio.get("estimate"), 2),
             "95% interval on the mean ratio":
                 f"{mean_ratio['lower']:.2f} to {mean_ratio['upper']:.2f}"
-                if mean_ratio.get("lower") is not None else "\u2014",
+                if mean_ratio.get("lower") is not None else "\u2013",
             "Median ratio": _fmt(median_ratio.get("estimate"), 2),
             "95% interval on the median ratio":
                 f"{median_ratio['lower']:.2f} to {median_ratio['upper']:.2f}"
-                if median_ratio.get("lower") is not None else "\u2014",
-            "Interval method": mean_ratio.get("method", "\u2014"),
+                if median_ratio.get("lower") is not None else "\u2013",
+            "Interval method": mean_ratio.get("method", "\u2013"),
             "Mean agreement, as a factor":
-                _fmt(10 ** agree["bias"], 2) if agree.get("estimable") else "\u2014",
+                _fmt(10 ** agree["bias"], 2) if agree.get("estimable") else "\u2013",
             "Limits of agreement, as factors":
                 f"{10 ** agree['lower']:.2f} to {10 ** agree['upper']:.2f}"
-                if agree.get("estimable") else "\u2014",
+                if agree.get("estimable") else "\u2013",
             "Rank agreement, Kendall tau": _fmt(rank.get("tau"), 3),
         })
     return pd.DataFrame(rows)
@@ -311,7 +341,7 @@ def table_association(results: dict) -> pd.DataFrame:
             "Groups": int(assoc["from_reported"]["n"]),
             "Spearman rho": _fmt(float(assoc["from_reconciled"]["rho"])
                                  - float(assoc["from_reported"]["rho"]), 3),
-            "p": "\u2014"})
+            "p": "\u2013"})
     return pd.DataFrame(rows)
 
 
@@ -320,7 +350,7 @@ def table_archive(results: dict) -> pd.DataFrame:
     redundancy = _frame(results, "archive_redundancy")
     rows = [{"Collection": name, "Records": int(count),
              "Subset of": "no other collection",
-             "Proportion of the superset it covers": "\u2014"}
+             "Proportion of the superset it covers": "\u2013"}
             for name, count in sorted(collections.items())]
     for _, row in redundancy.iterrows():
         for entry in rows:
@@ -344,16 +374,18 @@ TABLES = (
      table_divergence_estimate),
     ("Table 6. Candidate mechanism predictions per group", table_predictions),
     ("Table 7. Mechanism attribution", table_attribution),
-    ("Table 8. Shape of the counter the attributed mechanism sums",
+    ("Table 8. What each candidate mechanism predicts in total",
+     table_prediction_totals),
+    ("Table 9. Shape of the counter the attributed mechanism sums",
      table_gauge_profile),
-    ("Table 9. Completeness and referential integrity", table_completeness),
-    ("Table 10. Reconciliation under alternative assumptions", table_sweep),
-    ("Table 11. Assumption dependence by column", table_dependence),
-    ("Table 12. Group-level statistics under reported and reconciled values",
+    ("Table 10. Completeness and referential integrity", table_completeness),
+    ("Table 11. Reconciliation under alternative assumptions", table_sweep),
+    ("Table 12. Assumption dependence by column", table_dependence),
+    ("Table 13. Group-level statistics under reported and reconciled values",
      table_consequence),
-    ("Table 13. Association with an outcome, under reported and reconciled values",
+    ("Table 14. Association with an outcome, under reported and reconciled values",
      table_association),
-    ("Table 14. Collections in the archived export and their subset relations",
+    ("Table 15. Collections in the archived export and their subset relations",
      table_archive),
 )
 

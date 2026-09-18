@@ -300,6 +300,63 @@ def fig_mechanism_predictions(results: dict, directory: Path) -> None:
     _save(fig, directory, "figure_6_5_mechanism_predictions")
 
 
+def fig_gauge_trajectory(results: dict, directory: Path) -> None:
+    """The counter the view sums, in the order the snapshots were written.
+
+    The attribution says the reported column is the sum of this series. The
+    series is drawn so a reader can see what is being summed: a counter that
+    climbs and then drops back to nothing, several times over, so that every
+    step it takes is added again by each snapshot that follows it before the
+    next drop. The shaded area is the sum, which is the reported figure.
+    """
+    trace = _frame(results, "gauge_trace")
+    profile = _frame(results, "gauge_profile")
+    if trace.empty:
+        return
+
+    group = int(trace["group_number"].iloc[0])
+    row = profile[profile["group_number"] == group]
+    x = trace["position"].astype(int).to_numpy()
+    y = trace["counter"].astype(float).to_numpy()
+
+    fig, ax = plt.subplots(figsize=(6.6, 3.0))
+    ax.fill_between(x, 0, y, step="post", color=FILL, zorder=2)
+    ax.step(x, y, where="post", color=INK, linewidth=1.3, zorder=3)
+
+    for position in trace.loc[trace["reset_here"].astype(bool), "position"]:
+        ax.axvline(int(position) - 0.5, color=ACCENT, linewidth=1.0,
+                   linestyle=(0, (3, 2)), zorder=4)
+
+    top = float(y.max())
+    ax.set_ylim(0, top * 1.30)
+    ax.set_xlim(0.5, len(x) + 0.5)
+    ax.set_xlabel("agent decision snapshots, in the order they were written")
+    ax.set_ylabel("value of the counter")
+
+    if not row.empty:
+        summed = float(row["summed"].iloc[0])
+        highest = float(row["highest_value"].iloc[0])
+        ax.text(0.015, 0.97,
+                f"shaded area, which the view reports: {summed:,.0f}\n"
+                f"highest value the counter reaches: {highest:,.0f}",
+                transform=ax.transAxes, fontsize=7.5, va="top", ha="left",
+                color=INK)
+
+    # Label a reset in the clear stretch that follows one, rather than the
+    # first, which sits under the summary text and among the densest steps.
+    resets = [int(p) for p in trace.loc[trace["reset_here"].astype(bool), "position"]]
+    if resets:
+        marked = resets[len(resets) // 2]
+        ax.annotate("the counter resets here", xy=(marked - 0.5, top * 0.90),
+                    xytext=(marked - 4, top * 0.90),
+                    fontsize=7.5, color=ACCENT, ha="right", va="center",
+                    arrowprops=dict(arrowstyle="-", color=ACCENT, linewidth=0.8,
+                                    shrinkA=2, shrinkB=3))
+    ax.grid(axis="y", color=FILL, linewidth=0.7, zorder=0)
+    ax.set_axisbelow(True)
+    _save(fig, directory, "figure_gauge_trajectory")
+
+
 def fig_completeness(results: dict, directory: Path) -> None:
     """Completeness by check, with exact intervals."""
     frame = _frame(results, "completeness")
@@ -398,5 +455,5 @@ def render_all(results_path: Path, directory: Path) -> None:
     print("rendering figures")
     for func in (fig_reported_against_recomputed, fig_divergence_ratio,
                  fig_agreement, fig_downstream_impact, fig_mechanism_predictions,
-                 fig_completeness, fig_assumption_sweep):
+                 fig_gauge_trajectory, fig_completeness, fig_assumption_sweep):
         func(results, directory)

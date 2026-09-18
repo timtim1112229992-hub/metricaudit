@@ -281,6 +281,42 @@ def gauge_profile(corpus: Corpus, indicator: str = "help_click_count") -> pd.Dat
     return pd.DataFrame(rows).sort_values("group_number").reset_index(drop=True)
 
 
+def gauge_trace(corpus: Corpus, group_number: int,
+                indicator: str = "help_click_count") -> pd.DataFrame:
+    """The counter's ordered values for one group, with its stage alongside.
+
+    The profile counts the runs. This carries the sequence they were counted
+    from, so that a reader can see the resets rather than take the count on
+    trust. It holds the counter, the stage index and the position in the
+    sequence, and no timestamp, identifier or text.
+    """
+    gauge = GAUGE_FOR_INDICATOR.get(indicator)
+    if gauge is None or "decisions" not in corpus:
+        return pd.DataFrame()
+    dec = corpus["decisions"]
+    column = gauge["snapshot"]
+    if column not in dec.columns:
+        return pd.DataFrame()
+
+    view = corpus["view"].set_index("group_id")
+    matches = view.index[view["group_number"] == group_number]
+    if not len(matches):
+        return pd.DataFrame()
+
+    block = dec[dec["group_id"] == matches[0]].copy()
+    block["_t"] = pd.to_datetime(block["created_at"], format="ISO8601", utc=True)
+    block = block.sort_values("_t").reset_index(drop=True)
+    values = block[column].astype(float)
+    return pd.DataFrame({
+        "group_number": group_number,
+        "position": range(1, len(block) + 1),
+        "stage": block["stage"] if "stage" in block.columns else pd.NA,
+        "counter": values,
+        "reset_here": [False] + [bool(values[i] < values[i - 1])
+                                 for i in range(1, len(values))],
+    })
+
+
 def predictions(corpus: Corpus, indicator: str, index: pd.Index) -> pd.DataFrame:
     """Every candidate's prediction for one indicator, per group."""
     out = {}

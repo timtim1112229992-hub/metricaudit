@@ -88,6 +88,14 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
     # P5: mechanism attribution, and a description of the field it implicates.
     attribution, prediction_matrix = attribute.attribute(corpus, per_group, per_column)
     gauge_profile = attribute.gauge_profile(corpus)
+    # The trace of the group whose divergence is largest, which is the one the
+    # mechanism has to be legible on.
+    if not gauge_profile.empty:
+        worst = int(gauge_profile.loc[gauge_profile["summed"].idxmax(),
+                                      "group_number"])
+        gauge_trace = attribute.gauge_trace(corpus, worst)
+    else:
+        gauge_trace = pd.DataFrame()
 
     # P6: completeness.
     completeness = audit.completeness(corpus)
@@ -118,6 +126,7 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
         "attribution": attribution,
         "prediction_matrix": prediction_matrix,
         "gauge_profile": gauge_profile,
+        "gauge_trace": gauge_trace,
         "completeness": completeness,
         "name_drift": drift,
         "unnamed_by_category": unnamed,
