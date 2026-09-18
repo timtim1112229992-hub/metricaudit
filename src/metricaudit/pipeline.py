@@ -96,6 +96,10 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
         gauge_trace = attribute.gauge_trace(corpus, worst)
     else:
         gauge_trace = pd.DataFrame()
+    # A timestamp column is attributed to a store, and a store holds more than
+    # one kind of activity, so the category of the record it was stamped from is
+    # what decides whose activity the column is reporting.
+    temporal_trace = attribute.temporal_trace(corpus, per_group)
 
     # P6: completeness.
     completeness = audit.completeness(corpus)
@@ -127,6 +131,7 @@ def run(corpus: Corpus | None = None, output_dir: Path | None = None,
         "prediction_matrix": prediction_matrix,
         "gauge_profile": gauge_profile,
         "gauge_trace": gauge_trace,
+        "temporal_trace": temporal_trace,
         "completeness": completeness,
         "name_drift": drift,
         "unnamed_by_category": unnamed,

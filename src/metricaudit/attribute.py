@@ -223,6 +223,62 @@ def temporal_predictions(corpus: Corpus, index: pd.Index) -> pd.DataFrame:
     return pd.DataFrame(out, index=index)
 
 
+# The field naming what kind of record each store holds. A timestamp column is
+# attributed to a store, and a store is not a single kind of activity, so the
+# store alone does not settle whose activity the column is timing.
+TEMPORAL_CATEGORY = {
+    "operational": "event_type",
+    "reporting": "event_type",
+    "decisions": "action",
+}
+
+
+def temporal_trace(corpus: Corpus, per_group: pd.DataFrame,
+                   indicator: str = "last_active_at") -> pd.DataFrame:
+    """For each group, what the latest record in each candidate store was.
+
+    Attribution names the store a reported timestamp came from. That is not yet
+    a statement about meaning, because a store holding both a pupil's action and
+    the agent's response to it will answer "last active" with whichever came
+    last. The category of the latest record is what turns the attribution into a
+    claim, and it is carried here so the claim can be checked rather than taken
+    on the store's name.
+
+    Holds a group number, a store name, an offset in seconds and a category
+    label. No identifier, no timestamp and no text.
+    """
+    if indicator not in set(per_group.get("indicator", [])):
+        return pd.DataFrame()
+    block = per_group[per_group["indicator"] == indicator]
+    view = corpus["view"].set_index("group_id")
+    reported = pd.to_datetime(view[indicator], format="ISO8601", utc=True)
+
+    rows = []
+    for group_id in block["group_id"]:
+        when = reported.get(group_id)
+        if pd.isna(when):
+            continue
+        for store, field in TEMPORAL_CATEGORY.items():
+            if store not in corpus:
+                continue
+            frame = corpus[store]
+            part = frame[frame["group_id"] == group_id]
+            if part.empty:
+                continue
+            stamps = pd.to_datetime(part["created_at"], format="ISO8601", utc=True)
+            position = stamps.idxmax()
+            rows.append({
+                "indicator": indicator,
+                "group_number": int(view.loc[group_id, "group_number"]),
+                "store": store,
+                "offset_s": float((when - stamps.loc[position]).total_seconds()),
+                "latest_record_category": (str(part.loc[position, field])
+                                           if field in part.columns else ""),
+            })
+    return pd.DataFrame(rows).sort_values(["group_number", "store"]) \
+        .reset_index(drop=True)
+
+
 def gauge_profile(corpus: Corpus, indicator: str = "help_click_count") -> pd.DataFrame:
     """Describe the counter the attributed mechanism sums.
 

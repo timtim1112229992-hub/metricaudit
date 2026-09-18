@@ -213,6 +213,28 @@ def table_gauge_profile(results: dict) -> pd.DataFrame:
     } for _, row in frame.iterrows()])
 
 
+def table_temporal_trace(results: dict) -> pd.DataFrame:
+    """Which store each group's reported activity time was stamped from, and
+    what kind of record it was.
+
+    One row per group, with the offset to each candidate store's latest record.
+    A negative offset means the store holds something later than the column
+    claims, which is what identifies the store the column was not stamped from.
+    """
+    frame = _frame(results, "temporal_trace")
+    if frame.empty:
+        return frame
+    rows = []
+    for group, block in frame.groupby("group_number"):
+        row = {"Group": int(group)}
+        for _, entry in block.iterrows():
+            store = str(entry["store"]).replace("decisions", "agent decisions")
+            row[f"Offset to latest {store} record, s"] = _fmt(entry["offset_s"], 3)
+            row[f"Category of that {store} record"] = entry["latest_record_category"]
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def table_completeness(results: dict) -> pd.DataFrame:
     frame = _frame(results, "completeness")
     return pd.DataFrame([{
@@ -378,14 +400,16 @@ TABLES = (
      table_prediction_totals),
     ("Table 9. Shape of the counter the attributed mechanism sums",
      table_gauge_profile),
-    ("Table 10. Completeness and referential integrity", table_completeness),
-    ("Table 11. Reconciliation under alternative assumptions", table_sweep),
-    ("Table 12. Assumption dependence by column", table_dependence),
-    ("Table 13. Group-level statistics under reported and reconciled values",
+    ("Table 10. Store and record category behind each reported activity time",
+     table_temporal_trace),
+    ("Table 11. Completeness and referential integrity", table_completeness),
+    ("Table 12. Reconciliation under alternative assumptions", table_sweep),
+    ("Table 13. Assumption dependence by column", table_dependence),
+    ("Table 14. Group-level statistics under reported and reconciled values",
      table_consequence),
-    ("Table 14. Association with an outcome, under reported and reconciled values",
+    ("Table 15. Association with an outcome, under reported and reconciled values",
      table_association),
-    ("Table 15. Collections in the archived export and their subset relations",
+    ("Table 16. Collections in the archived export and their subset relations",
      table_archive),
 )
 
